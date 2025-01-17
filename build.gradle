@@ -35,6 +35,8 @@ tasks.named('test') {
     useJUnitPlatform()
 }
 
-bootJar {
-    mainClassName = 'com.taskmaster.MainClass' // Replace with the correct main class name
+// Specify the main class for Spring Boot application
+springBoot {
+    mainClass = 'com.taskmaster.TaskmasterApplication'
 }
+
