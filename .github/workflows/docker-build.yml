@@ -3,39 +3,52 @@ name: Deploy to ECS
 on:
   push:
     branches:
-      - main
+      - main  # Trigger the workflow on push to the main branch
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    steps:
-      - name: Checkout Code
-        uses: actions/checkout@v3
 
-      - name: Set up AWS CLI
+    permissions:
+      contents: read
+      id-token: write
+
+    steps:
+      # Step 1: Checkout the code
+      - name: Checkout code
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0  # Fetch the full repository to avoid missing files
+
+      # Step 2: Set up AWS credentials
+      - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v3
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: ap-south-1  # Replace with your region
+          aws-region: ap-south-1 # Use your AWS region
 
-      - name: Get Git Commit SHA
-        id: sha
-        run: echo "SHA=$(git rev-parse --short HEAD)" >> $GITHUB_ENV
-
+      # Step 3: Log in to Amazon ECR
       - name: Log in to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v1
+
+      # Step 4: Build, tag, and push Docker image to ECR
+      - name: Build, tag, and push Docker image
+        env:
+          IMAGE_TAG: ${{ github.sha }}  # Tag the image with the commit SHA
+          REPOSITORY_URI: ${{ secrets.ECR_REPOSITORY_URI }}
         run: |
-          aws ecr get-login-password --region ap-south-1 | docker login --username AWS --password-stdin ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.ap-south-1.amazonaws.com
+          echo "Building Docker image with tag: $IMAGE_TAG"
+          docker build -t $REPOSITORY_URI:$IMAGE_TAG .
+          docker push $REPOSITORY_URI:$IMAGE_TAG
 
-      - name: Build Docker Image
-        run: docker build -t taskmaster:${{ env.SHA }} .
-
-      - name: Tag Docker Image
-        run: docker tag taskmaster:${{ env.SHA }} ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.ap-south-1.amazonaws.com/taskmaster:${{ env.SHA }}
-
-      - name: Push Docker Image to ECR
-        run: docker push ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.ap-south-1.amazonaws.com/taskmaster:${{ env.SHA }}
-
-      - name: Update ECS Service
-        run: |
-          aws ecs update-service --cluster <cluster-name> --service <service-name> --force-new-deployment
+      # Step 5: Deploy to ECS
+      # - name: Deploy to ECS
+      #   uses: aws-actions/amazon-ecs-deploy-task-definition@v1
+      #   with:
+      #     task-definition: ecs-task-definition.json  # Path to your ECS task definition file
+      #     service: ${{ secrets.ECS_SERVICE_NAME }}
+      #     cluster: ${{ secrets.ECS_CLUSTER_NAME }}
+      #     image: ${{ secrets.ECR_REPOSITORY_URI }}:${{ github.sha }}
+      #     wait-for-service-stability: true
