@@ -1,5 +1,5 @@
-# Use a Java base image with Gradle support
-FROM openjdk:11-jdk-slim
+# Use a Java 17 base image instead of Java 11
+FROM openjdk:17-jdk-slim
 
 # Set the working directory inside the container
 WORKDIR /app
