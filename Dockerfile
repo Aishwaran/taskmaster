@@ -1,4 +1,4 @@
-# Use a Java 17 base image instead of Java 11
+# Use a Java 17 base image
 FROM openjdk:17-jdk-slim
 
 # Set the working directory inside the container
@@ -16,11 +16,8 @@ RUN ./gradlew --version
 # Build the project using the Gradle wrapper
 RUN ./gradlew build
 
-# Expose any necessary port (e.g., for a web server or application)
-# EXPOSE <PORT_NUMBER>
+# Expose port 8080 (common for Spring Boot applications)
+EXPOSE 8080
 
-# Set the default command to run your application, if applicable
-# CMD ["java", "-jar", "build/libs/your-app.jar"]
-
-# Alternatively, if you want to run tests or tasks:
-# CMD ["./gradlew", "run"]
+# Set the default command to run your application
+CMD ["java", "-jar", "build/libs/your-app.jar"]
