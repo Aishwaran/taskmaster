@@ -37,18 +37,24 @@ jobs:
       - name: Build, tag, and push Docker image
         env:
           IMAGE_TAG: ${{ github.sha }}  # Tag the image with the commit SHA
-          REPOSITORY_URI: ${{ secrets.ECR_REPOSITORY_URI }}
+          REPOSITORY_URI: ${{ secrets.ECR_REPOSITORY_URI }}  # Fetch the secret for your ECR URI
         run: |
-          echo "Building Docker image with tag: $IMAGE_TAG"
-          docker build -t $REPOSITORY_URI:$IMAGE_TAG .
-          docker push $REPOSITORY_URI:$IMAGE_TAG
+          # Ensure the IMAGE_TAG is a valid Docker tag by removing invalid characters
+          SANITIZED_IMAGE_TAG=$(echo $IMAGE_TAG | sed 's/[^a-zA-Z0-9._-]/_/g')
+          echo "Building Docker image with tag: $REPOSITORY_URI:$SANITIZED_IMAGE_TAG"
+          
+          # Build the Docker image
+          docker build -t $REPOSITORY_URI:$SANITIZED_IMAGE_TAG .
+          
+          # Push the Docker image
+          docker push $REPOSITORY_URI:$SANITIZED_IMAGE_TAG
 
       # Step 5: Deploy to ECS
-      # - name: Deploy to ECS
-      #   uses: aws-actions/amazon-ecs-deploy-task-definition@v1
-      #   with:
-      #     task-definition: ecs-task-definition.json  # Path to your ECS task definition file
-      #     service: ${{ secrets.ECS_SERVICE_NAME }}
-      #     cluster: ${{ secrets.ECS_CLUSTER_NAME }}
-      #     image: ${{ secrets.ECR_REPOSITORY_URI }}:${{ github.sha }}
-      #     wait-for-service-stability: true
+      - name: Deploy to ECS
+        uses: aws-actions/amazon-ecs-deploy-task-definition@v1
+        with:
+          task-definition: ecs-task-definition.json  # Path to your ECS task definition file
+          service: ${{ secrets.ECS_SERVICE_NAME }}
+          cluster: ${{ secrets.ECS_CLUSTER_NAME }}
+          image: ${{ secrets.ECR_REPOSITORY_URI }}:${{ github.sha }}
+          wait-for-service-stability: true
